@@ -1,7 +1,6 @@
 package com.tseapp.paperbind.customerscanning;
 
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
@@ -13,7 +12,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.preference.DialogPreference;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -21,10 +19,8 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -44,10 +40,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,10 +52,31 @@ public class MainActivity extends ActionBarActivity {
     public Boolean res;
     public Button scan, view, form_submit, offline;
     public EditText cust_name, cust_email;
-    public CheckBox send_to_vasu;
+    public static EditText cc_email;
     public Boolean scan_done, vasu_sent;
     public List<String> email_list = new ArrayList<String>();
     public Cursor cursor;
+
+
+    public static String mail_message = "Dear Sir or Madam,\n" +
+            "\n" +
+            "Greetings from PAPER BIND.\n" +
+            "\n" +
+            "Thanks for your visit at PAPER BIND’s booth during <ENTER EVENT NAME>. We value the time you had spent with us.\n" +
+            "\n" +
+            "Further to our discussion, please refer to the following weblink which will help you to down our product brochure.\n" +
+            "\n" +
+            "http://www.paperbind.in/mailer/brochure/brochure.pdf\n" +
+            "\n" +
+            "Should you need clarifications, then please contact us.\n" +
+            "\n" +
+            "We look forward serving you soon. \n" +
+            "\n" +
+            "Regards\n" +
+            "Team PAPER BIND\n" +
+            "\n" +
+            "PAPER BIND INTERNATIONAL PTE LTD\n" +
+            "www.paperbind.in";
     public Contact_Helper helper = new Contact_Helper(MainActivity.this);
 
     @Override
@@ -73,7 +88,6 @@ public class MainActivity extends ActionBarActivity {
         cursor = sqLB.query(Contact_Contract.TABLE,
                 new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.NAME, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.ADD_CC},
                 null, null, null, null, null);
-
         cursor.moveToFirst();
 
         buildUI();
@@ -88,7 +102,6 @@ public class MainActivity extends ActionBarActivity {
 
         scan.setOnClickListener
                 (
-
                         new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
@@ -108,10 +121,15 @@ public class MainActivity extends ActionBarActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        if (haveNetworkConnection()) {
+                        if (haveNetworkConnection())
+                        {
                             getemails e = new getemails();
                             e.execute();
-                        } else {
+                            database_operations dodo = new database_operations();
+                            dodo.execute();
+                        }
+                        else
+                        {
                             Toast.makeText(getApplicationContext(), "NO INTERNET ACCESS", Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -119,23 +137,31 @@ public class MainActivity extends ActionBarActivity {
         );
 
         form_submit.setOnClickListener(
-                new View.OnClickListener() {
+                new View.OnClickListener()
+                {
                     @Override
-                    public void onClick(View v) {
-                        if (haveNetworkConnection()) {
+                    public void onClick(View v)
+                    {
+                        if (haveNetworkConnection())
+                        {
                             scan_done = false;
                             formview();
-                        } else {
+                        }
+                        else
+                        {
                             no_network_alert();
                         }
                     }
                 }
         );
 
-        offline.setOnClickListener(
-                new View.OnClickListener() {
+        offline.setOnClickListener
+        (
+                new View.OnClickListener()
+                {
                     @Override
-                    public void onClick(View v) {
+                    public void onClick(View v)
+                    {
                         show_database();
                     }
                 }
@@ -165,7 +191,7 @@ public class MainActivity extends ActionBarActivity {
                         R.layout.list_item,
                         cursor,
                         new String[]{Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.ADD_CC, Contact_Contract.Columns.NAME},
-                        new int[]{R.id.email, R.id.cc, R.id.name},
+                        new int[]{R.id.e_mail, R.id.cc, R.id.name},
                         0);
 
         lv.setAdapter(listAdapter);
@@ -177,15 +203,7 @@ public class MainActivity extends ActionBarActivity {
         });
 
         alertDialog.show();
-        lv.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v)
-                    {
 
-                    }
-                }
-        );
         Toast.makeText(getApplicationContext(), String.valueOf(listAdapter.getCount()) + " Entries", Toast.LENGTH_SHORT).show();
     }
 
@@ -232,9 +250,9 @@ public class MainActivity extends ActionBarActivity {
         final AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
         LayoutInflater inflater = getLayoutInflater();
         View convertView = (View) inflater.inflate(R.layout.form, null);
-        cust_email = (EditText) convertView.findViewById(R.id.email);
+        cust_email = (EditText) convertView.findViewById(R.id.e_mail);
         cust_name = (EditText) convertView.findViewById(R.id.name);
-        send_to_vasu = (CheckBox) convertView.findViewById(R.id.vasu);
+        cc_email = (EditText) convertView.findViewById(R.id.addcc);
 
 
         alertDialog.setView(convertView);
@@ -244,12 +262,7 @@ public class MainActivity extends ActionBarActivity {
 
         alertDialog.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                if (send_to_vasu.isChecked()) {
-                    vasu_sent = true;
 
-                } else {
-                    vasu_sent = false;
-                }
                 insert_record();
             }
         });
@@ -264,7 +277,7 @@ public class MainActivity extends ActionBarActivity {
         SQLiteDatabase db = helper.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.clear();
-        values.put(Contact_Contract.Columns.ADD_CC, vasu_sent.toString());
+        values.put(Contact_Contract.Columns.ADD_CC, cc_email.getText().toString());
         values.put(Contact_Contract.Columns.NAME, cust_name.getText().toString());
         values.put(Contact_Contract.Columns.EMAIL, cust_email.getText().toString());
 
@@ -277,9 +290,9 @@ public class MainActivity extends ActionBarActivity {
         final AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
         LayoutInflater inflater = getLayoutInflater();
         View convertView = (View) inflater.inflate(R.layout.form, null);
-        cust_email = (EditText) convertView.findViewById(R.id.email);
+        cust_email = (EditText) convertView.findViewById(R.id.e_mail);
         cust_name = (EditText) convertView.findViewById(R.id.name);
-        send_to_vasu = (CheckBox) convertView.findViewById(R.id.vasu);
+        cc_email = (EditText) convertView.findViewById(R.id.addcc);
 
 
         alertDialog.setView(convertView);
@@ -289,7 +302,7 @@ public class MainActivity extends ActionBarActivity {
 
         alertDialog.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                if (send_to_vasu.isChecked()) {
+                if (cc_email.getText().toString().length()>0) {
                     vasu_sent = true;
 
                 } else {
@@ -308,119 +321,7 @@ public class MainActivity extends ActionBarActivity {
         send_email.show();
     }
 
-    public class upload_contact extends AsyncTask<Void, Void, String> {
 
-        ProgressDialog p = new ProgressDialog(MainActivity.this);
-        public boolean check;
-
-        @Override
-        protected void onPreExecute() {
-            send_email.dismiss();
-            p.setTitle("Sending Email");
-            p.setMessage("Sending Email to " + cust_email.getText().toString());
-            p.show();
-        }
-
-        @Override
-        protected String doInBackground(Void... params) {
-            HttpURLConnection urlConnection = null;
-            BufferedReader reader = null;
-
-            String addresslist = null;
-            try {
-                final String BASE_URL =
-                        "http://rishvatkhori.com/app/upload_contact.php?";
-                final String PARAM_EMAIL = "email";
-                final String PARAM_PHONE = "name";
-                final String PARAM_ADD_CC = "add_cc";
-                Uri builtUri = Uri.parse(BASE_URL).buildUpon()
-                        .appendQueryParameter(PARAM_EMAIL, cust_email.getText().toString())
-                        .appendQueryParameter(PARAM_PHONE, cust_name.getText().toString())
-                        .appendQueryParameter(PARAM_ADD_CC, vasu_sent.toString())
-                        .build();
-
-                Log.v("CHIRAGCHAPLOT", builtUri.toString());
-                URL url = new URL(builtUri.toString());
-
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.connect();
-
-                InputStream inputStream = urlConnection.getInputStream();
-                StringBuffer buffer = new StringBuffer();
-
-                if (inputStream == null) {
-                    // Nothing to do.
-                    return null;
-                }
-                reader = new BufferedReader(new InputStreamReader(inputStream));
-
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line + "\n");
-                }
-
-                if (buffer.length() == 0) {
-                    return null;
-                }
-
-                addresslist = buffer.toString();
-
-            } catch (IOException e) {
-                Log.e("ERRORLOG", "Error ", e);
-                return null;
-            } finally {
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
-                }
-
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (IOException e) {
-                        Log.e("ERRORLOG", "Error closing stream ", e);
-                    }
-                }
-            }
-
-            try {
-                Log.v("CHIRAGCHAPLOT", addresslist.toString());
-                return getresult(addresslist);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-
-        }
-
-        public String getresult(String result) throws JSONException {
-            JSONObject message = new JSONObject(result);
-            String done = message.getString("message");
-            if (done.equals("1")) {
-                check = true;
-            } else {
-                check = false;
-            }
-
-            return done;
-        }
-
-        @Override
-        protected void onPostExecute(String done) {
-            if (p.isShowing()) {
-                email = cust_email.getText().toString();
-                name = cust_name.getText().toString();
-                p.dismiss();
-                if (check == true) {
-                    email_sent();
-                } else {
-                    email_not_sent();
-                }
-            }
-        }
-
-    }
 
 
     @Override
@@ -438,16 +339,37 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_settings)
+        {
+            final AlertDialog.Builder mailer = new AlertDialog.Builder(MainActivity.this);
+            mailer.setIcon(R.drawable.ic_launcher);
+            LayoutInflater inflater = getLayoutInflater();
+            View convertView = (View) inflater.inflate(R.layout.message, null);
+            final EditText email_message = (EditText) convertView.findViewById(R.id.message);
+            email_message.setText(mail_message);
+            mailer.setView(convertView);
+            mailer.setTitle("Email to be sent");
+
+            mailer.setPositiveButton("Okay",new DialogInterface.OnClickListener(){
+                public void onClick(DialogInterface dialog, int id)
+                {
+                    mail_message = email_message.getText().toString();
+                }
+            });
+            mailer.show();
+
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    //This is for the scanning of barcodes and QR codes
+    public void onActivityResult(int requestCode, int resultCode, Intent intent)
+    {
         IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
-        if (scanResult != null) {
+        if (scanResult.getContents() != null)
+        {
             result = scanResult.getContents();
             Log.d("code", result);
             Matcher m = Pattern.compile("[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+").matcher(result);
@@ -466,6 +388,7 @@ public class MainActivity extends ActionBarActivity {
         // else continue with any other code you need in the method
     }
 
+    //Alert Dialogue Shown after scan to send the email
     public void show_alert() {
         final AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setTitle("Details Extracted");
@@ -475,7 +398,7 @@ public class MainActivity extends ActionBarActivity {
             public void onClick(DialogInterface dialog, int id) {
                 //All of the fun happens inside the CustomListener now.
                 //I had to move it to enable data validation.
-                send_email sent = new send_email();
+                send_email_to_contact sent = new send_email_to_contact();
                 sent.execute();
 
             }
@@ -486,6 +409,7 @@ public class MainActivity extends ActionBarActivity {
         send_email.show();
     }
 
+    //Alert DIalogue when email is sent
     public void email_sent() {
         AlertDialog yes;
 
@@ -503,6 +427,7 @@ public class MainActivity extends ActionBarActivity {
         yes.show();
     }
 
+    //Alert Dialogue when email is not sent
     public void email_not_sent() {
         final AlertDialog.Builder negative = new AlertDialog.Builder(MainActivity.this);
         negative.setTitle("EMAIL NOT SENT");
@@ -510,7 +435,7 @@ public class MainActivity extends ActionBarActivity {
         negative.setIcon(R.drawable.ic_launcher);
         negative.setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                send_email hey = new send_email();
+                send_email_to_contact hey = new send_email_to_contact();
                 hey.execute();
             }
         });
@@ -521,121 +446,14 @@ public class MainActivity extends ActionBarActivity {
 
     }
 
-
-    public class send_email extends AsyncTask<Void, Void, String> {
-
-        ProgressDialog p = new ProgressDialog(MainActivity.this);
-
-        @Override
-        protected void onPreExecute() {
-            send_email.dismiss();
-            p.setTitle("Sending Email");
-            p.setMessage("Sending Email to " + email);
-            p.show();
-        }
-
-        @Override
-        protected String doInBackground(Void... params) {
-            HttpURLConnection urlConnection = null;
-            BufferedReader reader = null;
-
-            String addresslist = null;
-            try {
-                final String BASE_URL =
-                        "http://rishvatkhori.com/app/send_email.php?";
-                final String PARAM_EMAIL = "email";
-                final String PARAM_PHONE = "phone";
-                Uri builtUri = Uri.parse(BASE_URL).buildUpon()
-                        .appendQueryParameter(PARAM_EMAIL, email)
-                        .appendQueryParameter(PARAM_PHONE, phone)
-                        .build();
-
-                URL url = new URL(builtUri.toString());
-
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.connect();
-
-                InputStream inputStream = urlConnection.getInputStream();
-                StringBuffer buffer = new StringBuffer();
-
-                if (inputStream == null) {
-                    // Nothing to do.
-                    return null;
-                }
-                reader = new BufferedReader(new InputStreamReader(inputStream));
-
-                String line;
-
-                while ((line = reader.readLine()) != null) {
-                    buffer.append(line + "\n");
-                }
-
-                if (buffer.length() == 0) {
-                    return null;
-                }
-
-                addresslist = buffer.toString();
-
-            } catch (IOException e) {
-                Log.e("ERRORLOG", "Error ", e);
-                return null;
-            } finally {
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
-                }
-
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (IOException e) {
-                        Log.e("ERRORLOG", "Error closing stream ", e);
-                    }
-                }
-            }
-
-            try {
-                Log.v("CHIRAGCHAPLOT", addresslist.toString());
-                return getresult(addresslist);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-
-        }
-
-        public String getresult(String result) throws JSONException {
-            JSONObject message = new JSONObject(result);
-            String done = message.getString("message");
-            if (done.equals("1")) {
-                res = true;
-            } else {
-                res = false;
-            }
-
-            return done;
-        }
-
-        @Override
-        protected void onPostExecute(String done) {
-            if (p.isShowing()) {
-                p.dismiss();
-                if (res == true) {
-                    email_sent();
-                } else {
-                    email_not_sent();
-                }
-            }
-        }
-
-    }
-
+    //Task to get all emails on the database
     public class getemails extends AsyncTask<Void, Void, String> {
 
         ProgressDialog p = new ProgressDialog(MainActivity.this);
 
         @Override
-        protected void onPreExecute() {
+        protected void onPreExecute()
+        {
             p.setTitle("Fetching Emails");
             p.setMessage("Fetchings Email from server");
             p.setIcon(R.drawable.ic_launcher);
@@ -650,7 +468,7 @@ public class MainActivity extends ActionBarActivity {
             String addresslist = null;
             try {
                 final String BASE_URL =
-                        "http://rishvatkhori.com/app/scan_get.php?";
+                        "http://rishvatkhori.com/app/scanning/scan_get.php?";
 
                 Uri builtUri = Uri.parse(BASE_URL).buildUpon()
                         .build();
@@ -739,7 +557,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void email_received() {
-        AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
+        final AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
         LayoutInflater inflater = getLayoutInflater();
         View convertView = (View) inflater.inflate(R.layout.list, null);
         alertDialog.setView(convertView);
@@ -753,14 +571,49 @@ public class MainActivity extends ActionBarActivity {
                 email_list.clear();
             }
         });
+        alertDialog.setNegativeButton("Download",new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        form_to_send_csv();
 
-        alertDialog.show();
+                    }
+                }
+                );
+
+        send_email = alertDialog.create();
+        send_email.show();
     }
+
+    public void form_to_send_csv()
+    {
+        send_email.dismiss();
+        final AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
+        alertDialog.setIcon(R.drawable.ic_launcher);
+        LayoutInflater inflater = getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.email,null);
+        alertDialog.setView(convertView);
+        alertDialog.setTitle("Enter Email");
+        cc_email = (EditText) convertView.findViewById(R.id.e_mail);
+        alertDialog.setPositiveButton("SEND MAIL", new DialogInterface.OnClickListener()
+        {
+            public void onClick(DialogInterface dialog, int id) {
+                download_all_emails dae = new download_all_emails();
+                dae.execute();
+
+            }
+        });
+        send_email = alertDialog.create();
+        send_email.show();
+
+    }
+
 
     public void check_to_send()
     {
         helper = new Contact_Helper(MainActivity.this);
-        SQLiteDatabase db = helper.getWritableDatabase();
+        SQLiteDatabase db = helper.getReadableDatabase();
+        /*Cursor cursor = db.query(Contact_Contract.TABLE,
+                new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.NAME, Contact_Contract.Columns.ADD_CC},
+                null, null, null, null, null);*/
         Cursor cursor = db.rawQuery("select * from contacts", null);
 
         if (cursor.moveToFirst()) {
@@ -771,19 +624,48 @@ public class MainActivity extends ActionBarActivity {
                 db_email = cursor.getString(cursor.getColumnIndex(Contact_Contract.Columns.EMAIL));
                 db_cc = cursor.getString(cursor.getColumnIndex(Contact_Contract.Columns.ADD_CC));
 
-                db.delete(Contact_Contract.TABLE, Contact_Contract.Columns.EMAIL + " =?", new String[]{db_email});
+                //db.delete(Contact_Contract.TABLE, Contact_Contract.Columns.EMAIL + " =?", new String[]{db_email});
+                Toast.makeText(getApplicationContext(),db_name,Toast.LENGTH_SHORT).show();
             }
 
             cursor.moveToNext();
         }
     }
 
-    public class send_database_contacts extends AsyncTask<Void,Void, String>
+    public class database_operations extends AsyncTask<Void, Void, String>
     {
-        public boolean res;
-
         @Override
         protected String doInBackground(Void... params)
+        {
+            helper = new Contact_Helper(MainActivity.this);
+            SQLiteDatabase db = helper.getReadableDatabase();
+        /*Cursor cursor = db.query(Contact_Contract.TABLE,
+                new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.NAME, Contact_Contract.Columns.ADD_CC},
+                null, null, null, null, null);*/
+            Cursor cursor = db.rawQuery("select * from contacts", null);
+
+            if (cursor.moveToFirst()) {
+                while (cursor.isAfterLast() == false && haveNetworkConnection())
+                {
+
+                    //Get the values
+                    db_name = cursor.getString(cursor.getColumnIndex(Contact_Contract.Columns.NAME));
+                    db_email = cursor.getString(cursor.getColumnIndex(Contact_Contract.Columns.EMAIL));
+                    db_cc = cursor.getString(cursor.getColumnIndex(Contact_Contract.Columns.ADD_CC));
+
+                    Log.v("CHIRAGCHAPLOT",db_name);
+                    send_db_entry();
+                    db.delete(Contact_Contract.TABLE, Contact_Contract.Columns.EMAIL + " =?", new String[]{db_email});
+                    cursor.moveToNext();
+                }
+
+
+            }
+
+            return null;
+        }
+
+        protected String send_db_entry()
         {
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
@@ -792,14 +674,16 @@ public class MainActivity extends ActionBarActivity {
             try
             {
                 final String BASE_URL =
-                        "http://rishvatkhori.com/app/upload_contact.php?";
+                        "http://rishvatkhori.com/app/scanning/test_email.php?";
                 final String PARAM_EMAIL = "email";
                 final String PARAM_PHONE = "name";
                 final String PARAM_ADD_CC = "add_cc";
+                final String PARAM_MESSAGE = "message";
                 Uri builtUri = Uri.parse(BASE_URL).buildUpon()
                         .appendQueryParameter(PARAM_EMAIL, db_email)
                         .appendQueryParameter(PARAM_PHONE,db_name)
                         .appendQueryParameter(PARAM_ADD_CC,db_cc)
+                        .appendQueryParameter(PARAM_MESSAGE,mail_message)
                         .build();
 
                 Log.v("CHIRAGCHAPLOT",builtUri.toString());
@@ -868,8 +752,8 @@ public class MainActivity extends ActionBarActivity {
             catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
 
+            return null;
         }
 
         public String getresult(String result) throws JSONException
@@ -885,9 +769,321 @@ public class MainActivity extends ActionBarActivity {
                 res = false;
             }
 
+            return null;
+        }
+    }
+
+    //Send offline contacts to database and then send email
+    public class upload_contact extends AsyncTask<Void, Void, String> {
+
+        ProgressDialog p = new ProgressDialog(MainActivity.this);
+        public boolean check;
+
+        @Override
+        protected void onPreExecute() {
+            send_email.dismiss();
+            p.setTitle("Sending Email");
+            p.setMessage("Sending Email to " + cust_email.getText().toString());
+            p.show();
+        }
+
+        @Override
+        protected String doInBackground(Void... params) {
+            HttpURLConnection urlConnection = null;
+            BufferedReader reader = null;
+
+            String addresslist = null;
+            try {
+                final String BASE_URL =
+                        "http://rishvatkhori.com/app/scanning/upload_contact.php?";
+                final String PARAM_EMAIL = "email";
+                final String PARAM_PHONE = "name";
+                final String PARAM_ADD_CC = "add_cc";
+                final String PARAM_MESSAGE = "message";
+
+                Uri builtUri = Uri.parse(BASE_URL).buildUpon()
+                        .appendQueryParameter(PARAM_EMAIL, cust_email.getText().toString())
+                        .appendQueryParameter(PARAM_PHONE, cust_name.getText().toString())
+                        .appendQueryParameter(PARAM_ADD_CC, cc_email.getText().toString())
+                        .appendQueryParameter(PARAM_MESSAGE,mail_message)
+                        .build();
+
+                Log.v("CHIRAGCHAPLOT", builtUri.toString());
+                URL url = new URL(builtUri.toString());
+
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                InputStream inputStream = urlConnection.getInputStream();
+                StringBuffer buffer = new StringBuffer();
+
+                if (inputStream == null) {
+                    // Nothing to do.
+                    return null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line + "\n");
+                }
+
+                if (buffer.length() == 0) {
+                    return null;
+                }
+
+                addresslist = buffer.toString();
+
+            } catch (IOException e) {
+                Log.e("ERRORLOG", "Error ", e);
+                return null;
+            } finally {
+                if (urlConnection != null) {
+                    urlConnection.disconnect();
+                }
+
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.e("ERRORLOG", "Error closing stream ", e);
+                    }
+                }
+            }
+
+            try {
+                Log.v("CHIRAGCHAPLOT", addresslist.toString());
+                return getresult(addresslist);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+
+        }
+
+        public String getresult(String result) throws JSONException {
+            JSONObject message = new JSONObject(result);
+            String done = message.getString("message");
+            if (done.equals("1")) {
+                check = true;
+            } else {
+                check = false;
+            }
+
             return done;
         }
 
+        @Override
+        protected void onPostExecute(String done) {
+            if (p.isShowing()) {
+                email = cust_email.getText().toString();
+                name = cust_name.getText().toString();
+                p.dismiss();
+                if (check == true) {
+                    email_sent();
+                } else {
+                    email_not_sent();
+                }
+            }
+        }
+
+    }
+
+
+
+    public class send_email_to_contact extends AsyncTask<Void, Void, String> {
+
+        ProgressDialog p = new ProgressDialog(MainActivity.this);
+
+        @Override
+        protected void onPreExecute()
+        {
+            send_email.dismiss();
+            p.setTitle("Sending Email");
+            p.setMessage("Sending Email to " + email);
+            p.show();
+        }
+
+        @Override
+        protected String doInBackground(Void... params) {
+            HttpURLConnection urlConnection = null;
+            BufferedReader reader = null;
+
+            String addresslist = null;
+            try {
+                final String BASE_URL =
+                        "http://rishvatkhori.com/app/scanning/send_email.php?";
+                final String PARAM_EMAIL = "email";
+                final String PARAM_PHONE = "phone";
+                final String PARAM_MESSAGE = "message";
+                final String PARAM_CC = "add_cc";
+                Uri builtUri = Uri.parse(BASE_URL).buildUpon()
+                        .appendQueryParameter(PARAM_EMAIL, email)
+                        .appendQueryParameter(PARAM_PHONE, phone)
+                        .appendQueryParameter(PARAM_CC, cc_email.getText().toString())
+                        .appendQueryParameter(PARAM_MESSAGE,mail_message)
+                        .build();
+
+                URL url = new URL(builtUri.toString());
+
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                InputStream inputStream = urlConnection.getInputStream();
+                StringBuffer buffer = new StringBuffer();
+
+                if (inputStream == null) {
+                    // Nothing to do.
+                    return null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line + "\n");
+                }
+
+                if (buffer.length() == 0) {
+                    return null;
+                }
+
+                addresslist = buffer.toString();
+
+            } catch (IOException e) {
+                Log.e("ERRORLOG", "Error ", e);
+                return null;
+            } finally {
+                if (urlConnection != null) {
+                    urlConnection.disconnect();
+                }
+
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.e("ERRORLOG", "Error closing stream ", e);
+                    }
+                }
+            }
+
+            try {
+                Log.v("CHIRAGCHAPLOT", addresslist.toString());
+                return getresult(addresslist);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+
+        }
+
+        public String getresult(String result) throws JSONException {
+            JSONObject message = new JSONObject(result);
+            String done = message.getString("message");
+            if (done.equals("1")) {
+                res = true;
+            } else {
+                res = false;
+            }
+
+            return done;
+        }
+
+        @Override
+        protected void onPostExecute(String done) {
+            if (p.isShowing()) {
+                p.dismiss();
+                if (res == true) {
+                    email_sent();
+                } else {
+                    email_not_sent();
+                }
+            }
+        }
+
+    }
+
+    //Download all contacts
+    public class download_all_emails extends AsyncTask<Void, Void,Void>
+    {
+
+        @Override
+        protected void onPreExecute()
+        {
+            send_email.dismiss();
+            ProgressDialog p = new ProgressDialog(getApplicationContext());
+            p.setMessage("Sending Email to " + cc_email.getText().toString());
+            p.setTitle("Sending Email");
+            p.setIcon(R.drawable.ic_launcher);
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            HttpURLConnection urlConnection = null;
+            BufferedReader reader = null;
+
+            String addresslist = null;
+            try {
+                final String BASE_URL =
+                        "http://rishvatkhori.com/app/scanning/sql_to_csv.php";
+                Uri builtUri = Uri.parse(BASE_URL).buildUpon()
+                        .appendQueryParameter("email",cc_email.getText().toString())
+                        .build();
+
+                Log.v("CHIRAGCHAPLOT",builtUri.toString());
+                URL url = new URL(builtUri.toString());
+
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                InputStream inputStream = urlConnection.getInputStream();
+                StringBuffer buffer = new StringBuffer();
+
+                if (inputStream == null) {
+                    // Nothing to do.
+                    return null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    buffer.append(line + "\n");
+                }
+
+                if (buffer.length() == 0) {
+                    return null;
+                }
+
+                addresslist = buffer.toString();
+
+            } catch (IOException e) {
+                Log.e("ERRORLOG", "Error ", e);
+                return null;
+            } finally {
+                if (urlConnection != null) {
+                    urlConnection.disconnect();
+                }
+
+                if (reader != null) {
+                    try {
+                        reader.close();
+                    } catch (IOException e) {
+                        Log.e("ERRORLOG", "Error closing stream ", e);
+                    }
+                }
+            }
+
+            try {
+                Log.v("CHIRAGCHAPLOT", addresslist.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
     }
 
 }
