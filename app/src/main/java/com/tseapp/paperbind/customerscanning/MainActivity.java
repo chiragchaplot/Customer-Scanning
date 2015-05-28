@@ -6,6 +6,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
@@ -19,6 +21,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -48,10 +51,10 @@ import java.util.regex.Pattern;
 public class MainActivity extends ActionBarActivity {
 
     public String email, result, phone, name, db_name, db_email, db_cc;
-    public AlertDialog send_email;
+    public AlertDialog send_email, set_message;
     public Boolean res;
     public Button scan, view, form_submit, offline;
-    public EditText cust_name, cust_email;
+    public EditText cust_name, cust_email,title, message;
     public static EditText cc_email;
     public Boolean scan_done, vasu_sent;
     public List<String> email_list = new ArrayList<String>();
@@ -77,7 +80,9 @@ public class MainActivity extends ActionBarActivity {
             "\n" +
             "PAPER BIND INTERNATIONAL PTE LTD\n" +
             "www.paperbind.in";
-    public Contact_Helper helper = new Contact_Helper(MainActivity.this);
+
+    public Contact_Helper contact_helper = new Contact_Helper(MainActivity.this);
+    public message_helper message_Helper = new message_helper(MainActivity.this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -89,6 +94,9 @@ public class MainActivity extends ActionBarActivity {
                 new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.NAME, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.ADD_CC},
                 null, null, null, null, null);
         cursor.moveToFirst();
+
+        //Set Screen Orientation to Portrait
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         buildUI();
     }
@@ -179,10 +187,15 @@ public class MainActivity extends ActionBarActivity {
         alertDialog.setTitle("Offline Database");
         ListView lv = (ListView) convertView.findViewById(R.id.lv);
 
-        helper = new Contact_Helper(MainActivity.this);
-        SQLiteDatabase sqlDB = helper.getReadableDatabase();
+        contact_helper = new Contact_Helper(MainActivity.this);
+        SQLiteDatabase sqlDB = contact_helper.getReadableDatabase();
         Cursor cursor = sqlDB.query(Contact_Contract.TABLE,
-                new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.NAME, Contact_Contract.Columns.ADD_CC},
+                new String[]{
+                        Contact_Contract.Columns._ID,
+                        Contact_Contract.Columns.EMAIL,
+                        Contact_Contract.Columns.NAME,
+                        Contact_Contract.Columns.ADD_CC
+                },
                 null, null, null, null, null);
 
         final ListAdapter listAdapter = new SimpleCursorAdapter
@@ -205,6 +218,20 @@ public class MainActivity extends ActionBarActivity {
         alertDialog.show();
 
         Toast.makeText(getApplicationContext(), String.valueOf(listAdapter.getCount()) + " Entries", Toast.LENGTH_SHORT).show();
+    }
+
+    //Show message bank
+    public void show_message()
+    {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(getApplicationContext());
+        LayoutInflater inflater = getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.list,null);
+        alertDialog.setView(convertView);
+        alertDialog.setTitle("Messages");
+        ListView lv = (ListView) convertView.findViewById(R.id.lv);
+
+
+
     }
 
 
@@ -273,8 +300,8 @@ public class MainActivity extends ActionBarActivity {
 
     //Insert Record to DB
     public void insert_record() {
-        helper = new Contact_Helper(MainActivity.this);
-        SQLiteDatabase db = helper.getWritableDatabase();
+        contact_helper = new Contact_Helper(MainActivity.this);
+        SQLiteDatabase db = contact_helper.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.clear();
         values.put(Contact_Contract.Columns.ADD_CC, cc_email.getText().toString());
@@ -282,6 +309,20 @@ public class MainActivity extends ActionBarActivity {
         values.put(Contact_Contract.Columns.EMAIL, cust_email.getText().toString());
 
         long l = db.insertWithOnConflict(Contact_Contract.TABLE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        Log.v("CHIRAGCHAPLOT", String.valueOf(l));
+    }
+
+    //Insert New Message
+    public void insert_message()
+    {
+        message_Helper = new message_helper(MainActivity.this);
+        SQLiteDatabase db = message_Helper.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.clear();
+        values.put(message_contract.Columns.NAME,title.getText().toString());
+        values.put(message_contract.Columns.MESSAGE,message.getText().toString());
+
+        long l = db.insertWithOnConflict(message_contract.TABLE,null,values,SQLiteDatabase.CONFLICT_IGNORE);
         Log.v("CHIRAGCHAPLOT", String.valueOf(l));
     }
 
@@ -331,6 +372,7 @@ public class MainActivity extends ActionBarActivity {
         return true;
     }
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -344,26 +386,199 @@ public class MainActivity extends ActionBarActivity {
             final AlertDialog.Builder mailer = new AlertDialog.Builder(MainActivity.this);
             mailer.setIcon(R.drawable.ic_launcher);
             LayoutInflater inflater = getLayoutInflater();
-            View convertView = (View) inflater.inflate(R.layout.message, null);
-            final EditText email_message = (EditText) convertView.findViewById(R.id.message);
-            email_message.setText(mail_message);
+            View convertView = (View) inflater.inflate(R.layout.message_list, null);
             mailer.setView(convertView);
             mailer.setTitle("Email to be sent");
+            ListView lv = (ListView) convertView.findViewById(R.id.lv);
 
-            mailer.setPositiveButton("Okay",new DialogInterface.OnClickListener(){
-                public void onClick(DialogInterface dialog, int id)
+            //Show list of emails with titles only
+            message_Helper = new message_helper(MainActivity.this);
+            SQLiteDatabase sqlDB = message_Helper.getReadableDatabase();
+            final Cursor cursor = sqlDB.query(message_contract.TABLE,
+                    new String[]
+            {
+                message_contract.Columns._ID,
+                message_contract.Columns.NAME,
+                message_contract.Columns.MESSAGE
+            },
+            null,null,null,null,null);
+
+            final ListAdapter listAdapter = new SimpleCursorAdapter
+                    (
+                            MainActivity.this,
+                            R.layout.message_item,
+                            cursor,
+                            new String[]
+                                    {
+                                            message_contract.Columns.NAME
+                                    },
+                            new int[]{R.id.title},
+                            0
+                    );
+
+            lv.setAdapter(listAdapter);
+
+            //Access Table
+            lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id)
                 {
-                    mail_message = email_message.getText().toString();
+                    //Toast.makeText(getApplicationContext(),String.valueOf(position+1),Toast.LENGTH_SHORT).show();
+
+                    //Access the record details
+                    cursor.moveToPosition(position);
+                    String message_name = cursor.getString(1);
+                    String message_body = cursor.getString(2);
+                    String message_id = cursor.getString(0);
+
+                    view_record(message_name,message_body,message_id);
                 }
             });
-            mailer.show();
 
+            mailer.setPositiveButton("ADD",new DialogInterface.OnClickListener()
+            {
+                public void onClick(DialogInterface dialog, int id)
+                {
+                    //mail_message = email_message.getText().toString();
+                    send_email.dismiss();
+                    insert_new_message();
+                }
+            });
+
+            mailer.setNegativeButton("Cancel",new DialogInterface.OnClickListener()
+            {
+                public void onClick(DialogInterface dialog, int id)
+                {
+                    //mail_message = email_message.getText().toString();
+                }
+            });
+
+
+            send_email = mailer.create();
+            send_email.show();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
+    //Access a particular record
+    public void view_record(String name, final String body, final String position)
+    {
+        //Dismiss Current DIalogue
+        send_email.dismiss();
+
+
+
+        //Set up new one
+        AlertDialog.Builder mailer = new AlertDialog.Builder(MainActivity.this);
+        mailer.setIcon(R.drawable.ic_launcher);
+        LayoutInflater inflater = getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.message, null);
+        mailer.setView(convertView);
+        title = (EditText) convertView.findViewById(R.id.title);
+        message = (EditText) convertView.findViewById(R.id.message);
+
+        title.setText(name);
+        message.setText(body);
+
+        mailer.setPositiveButton("SELECT", new DialogInterface.OnClickListener()
+        {
+            public void onClick(DialogInterface dialog, int id)
+            {
+                mail_message = body;
+            }
+        });
+
+        mailer.setNegativeButton("UPDATE",new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id)
+            {
+                update_message(position);
+            }
+        });
+
+        mailer.setNeutralButton("DELETE", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id)
+            {
+                delete_message(position);
+            }
+        });
+
+        send_email = mailer.create();
+        send_email.show();
+    }
+
+    //Update Message
+    public void update_message(String position)
+    {
+        send_email.dismiss();
+        message_Helper = new message_helper(MainActivity.this);
+        SQLiteDatabase sqlDB = message_Helper.getWritableDatabase();
+        final Cursor cursor = sqlDB.query(message_contract.TABLE,
+                new String[]
+                        {
+                                message_contract.Columns._ID,
+                                message_contract.Columns.NAME,
+                                message_contract.Columns.MESSAGE
+                        },
+                null,null,null,null,null);
+
+        ContentValues cv = new ContentValues();
+
+        cv.put(message_contract.Columns.NAME,title.getText().toString());
+        cv.put(message_contract.Columns.MESSAGE,message.getText().toString());
+
+        sqlDB.update(message_contract.TABLE, cv, "_id "+"="+position, null);
+    }
+
+
+    //Delete Message
+    public void delete_message(String position)
+    {
+        send_email.dismiss();
+        message_Helper = new message_helper(MainActivity.this);
+        SQLiteDatabase sqlDB = message_Helper.getWritableDatabase();
+        final Cursor cursor = sqlDB.query(message_contract.TABLE,
+                new String[]
+                        {
+                                message_contract.Columns._ID,
+                                message_contract.Columns.NAME,
+                                message_contract.Columns.MESSAGE
+                        },
+                null,null,null,null,null);
+//Contact_Contract.Columns.EMAIL + " =?", new String[]{db_email});
+        sqlDB.delete(message_contract.TABLE,message_contract.Columns._ID+"="+position, null);
+    }
+
+
+    //Add new message into the
+    public void insert_new_message()
+    {
+        final AlertDialog.Builder mailer = new AlertDialog.Builder(MainActivity.this);
+        mailer.setIcon(R.drawable.ic_launcher);
+        LayoutInflater inflater = getLayoutInflater();
+        View convertView = (View) inflater.inflate(R.layout.message, null);
+        mailer.setView(convertView);
+        mailer.setTitle("New Email");
+        title = (EditText) convertView.findViewById(R.id.title);
+        message = (EditText) convertView.findViewById(R.id.message);
+        message.setText(mail_message);
+
+        mailer.setPositiveButton("Add",new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                insert_message();
+            }
+        });
+
+        mailer.setNegativeButton("Cancel",new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        send_email = mailer.create();
+        send_email.show();
+    }
     //This is for the scanning of barcodes and QR codes
     public void onActivityResult(int requestCode, int resultCode, Intent intent)
     {
@@ -609,8 +824,8 @@ public class MainActivity extends ActionBarActivity {
 
     public void check_to_send()
     {
-        helper = new Contact_Helper(MainActivity.this);
-        SQLiteDatabase db = helper.getReadableDatabase();
+        contact_helper = new Contact_Helper(MainActivity.this);
+        SQLiteDatabase db = contact_helper.getReadableDatabase();
         /*Cursor cursor = db.query(Contact_Contract.TABLE,
                 new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.NAME, Contact_Contract.Columns.ADD_CC},
                 null, null, null, null, null);*/
@@ -637,8 +852,8 @@ public class MainActivity extends ActionBarActivity {
         @Override
         protected String doInBackground(Void... params)
         {
-            helper = new Contact_Helper(MainActivity.this);
-            SQLiteDatabase db = helper.getReadableDatabase();
+            contact_helper = new Contact_Helper(MainActivity.this);
+            SQLiteDatabase db = contact_helper.getReadableDatabase();
         /*Cursor cursor = db.query(Contact_Contract.TABLE,
                 new String[]{Contact_Contract.Columns._ID, Contact_Contract.Columns.EMAIL, Contact_Contract.Columns.NAME, Contact_Contract.Columns.ADD_CC},
                 null, null, null, null, null);*/
@@ -1085,5 +1300,7 @@ public class MainActivity extends ActionBarActivity {
             return null;
         }
     }
+
+
 
 }

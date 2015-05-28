@@ -3,9 +3,26 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
     <EditText
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:imeOptions="actionNext"
+        android:hint = "Enter Title"
+        android:id = "@+id/title"/>
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/title"
+        android:layout_marginTop="10dp"
+        android:imeOptions="actionDone"
+        android:hint = "Enter Message"
         android:id = "@+id/message"/>
+    </RelativeLayout>
 
 </ScrollView>
