@@ -60,7 +60,6 @@ public class MainActivity extends ActionBarActivity {
     public List<String> email_list = new ArrayList<String>();
     public Cursor cursor;
 
-
     public static String mail_message = "Dear Sir or Madam,\n" +
             "\n" +
             "Greetings from PAPER BIND.\n" +
